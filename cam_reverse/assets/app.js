@@ -44,7 +44,7 @@
     const f = document.createElement("footer");
     f.className = "site-footer";
     f.innerHTML =
-      'cam-reverse · <a href="https://github.com/adlerweb/cam-reverse" target="_blank" rel="noopener noreferrer">github.com/adlerweb/cam-reverse</a>';
+      'cam-reverse.py · <a href="https://github.com/adlerweb/cam-reverse.py" target="_blank" rel="noopener noreferrer">github.com/adlerweb/cam-reverse.py</a>';
     document.body.appendChild(f);
   }
 
