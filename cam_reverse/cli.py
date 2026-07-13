@@ -9,6 +9,7 @@ from . import settings
 from .capture_single import capture_single
 from .http_server import serve_http
 from .logger import build_logger, logger
+from .version import startup_line
 from .pair import pair
 
 
@@ -54,6 +55,7 @@ def main(argv=None) -> None:
             settings.config["discovery_ips"] = [args.discovery_ip]
 
         build_logger(settings.config["logging"]["level"], settings.config["logging"].get("use_color"))
+        logger.info(startup_line())
         try:
             asyncio.run(serve_http(settings.config["http_server"]["port"]))
         except KeyboardInterrupt:
@@ -61,6 +63,7 @@ def main(argv=None) -> None:
 
     elif args.command == "pair":
         build_logger(args.log_level, None)
+        logger.info(startup_line())
         if args.discovery_ip is not None:
             settings.config["discovery_ips"] = [args.discovery_ip]
         try:
@@ -70,6 +73,7 @@ def main(argv=None) -> None:
 
     elif args.command == "frame":
         build_logger(args.log_level, None)
+        logger.info(startup_line())
         try:
             asyncio.run(capture_single(args.discovery_ip, args.out))
         except KeyboardInterrupt:
