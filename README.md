@@ -102,6 +102,16 @@ You must restart the HTTP server for changes to the settings file to take effect
 cam-reverse frame --discovery_ip 192.168.40.104 --out out.jpg
 ```
 
+### Running as a service
+
+An example systemd unit is provided at [`contrib/cam-reverse.service`](contrib/cam-reverse.service). Adjust the user and paths, then:
+
+```bash
+sudo cp contrib/cam-reverse.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cam-reverse
+```
+
 ----
 
 ## Protocol
