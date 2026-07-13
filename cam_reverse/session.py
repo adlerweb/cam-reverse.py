@@ -126,11 +126,17 @@ class Session:
     # -- incoming -----------------------------------------------------------
     def _handle_incoming(self, msg: bytes, rinfo) -> None:
         dv = DV(bytearray(msg))
-        raw = dv.read_u16()
-        cmd = CommandsByValue.get(raw)
-        logger.log("trace", f"<< {cmd}")
-        handler = self.handlers.get(cmd, not_impl)
-        handler(self, dv, rinfo)
+        try:
+            raw = dv.read_u16()
+            cmd = CommandsByValue.get(raw)
+            logger.log("trace", f"<< {cmd}")
+            handler = self.handlers.get(cmd, not_impl)
+            handler(self, dv, rinfo)
+        except Exception as exc:
+            # Contain a misbehaving camera: a malformed packet drops quietly and
+            # does not disturb this session's other packets or any other camera.
+            logger.warning(f"Dropping bad packet from camera {self.dev_name}: {exc!r}")
+            return
         if raw != Commands["P2PAlive"] and raw != Commands["P2PAliveAck"]:
             self.last_received_packet = _now_ms()
 
