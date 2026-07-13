@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/style.css">
+  <title>Settings — cam-reverse</title>
+  <script>(function(){var t=localStorage.getItem('cam-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><a href="/">📷 cam-reverse</a> <span style="color:var(--muted)">/ Settings</span></div>
+    <div class="actions">
+      <a class="btn" href="/">← All cameras</a>
+      <button class="btn" id="theme-btn" onclick="cycleTheme()">🌗 Auto</button>
+    </div>
+  </header>
+  <main class="container">
+    <div class="panel">
+      <h2>Server</h2>
+      <p class="hint">Port, discovery and logging changes are written to the file but only take effect after a restart.</p>
+      <div class="row">
+        <div class="field"><label>HTTP port</label><input type="number" id="port"></div>
+        <div class="field"><label>Log level</label>
+          <select id="level">
+            <option value="trace">trace</option>
+            <option value="debug">debug</option>
+            <option value="info">info</option>
+            <option value="warning">warning</option>
+            <option value="error">error</option>
+          </select>
+        </div>
+      </div>
+      <div class="checkline"><input type="checkbox" id="use_color"><label>Colorized logs</label></div>
+      <div class="field"><label>Discovery IPs (one per line)</label><textarea id="discovery_ips"></textarea></div>
+      <div class="field"><label>Blacklisted IPs (one per line)</label><textarea id="blacklisted_ips"></textarea></div>
+    </div>
+
+    <div class="panel">
+      <h2>Cameras</h2>
+      <p class="hint">Alias, rotation and mirroring apply live; they are also written to the file.</p>
+      <div id="cameras"></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn primary" onclick="save()">💾 Save to file</button>
+      <a class="btn" href="/">Cancel</a>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    let cfg = {};
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+    const lines = (arr) => (arr || []).join("\n");
+    const parseLines = (t) => t.split("\n").map((s) => s.trim()).filter(Boolean);
+
+    function renderCameras() {
+      const wrap = document.getElementById("cameras");
+      const cams = cfg.cameras || {};
+      const ids = Object.keys(cams);
+      if (ids.length === 0) {
+        wrap.innerHTML = '<p class="hint">No cameras in the config yet.</p>';
+        return;
+      }
+      wrap.innerHTML = "";
+      for (const id of ids) {
+        const c = cams[id] || {};
+        const el = document.createElement("div");
+        el.className = "panel";
+        el.style.background = "var(--surface-2)";
+        el.innerHTML = `
+          <h2 style="font-size:14px">${esc(id)}</h2>
+          <div class="row">
+            <div class="field"><label>Alias</label><input type="text" data-id="${esc(id)}" data-k="alias" value="${esc(c.alias || "")}"></div>
+            <div class="field"><label>Rotate</label>
+              <select data-id="${esc(id)}" data-k="rotate">
+                ${[0, 1, 2, 3].map((r) => `<option value="${r}" ${(c.rotate || 0) == r ? "selected" : ""}>${r * 90}°</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="checkline"><input type="checkbox" data-id="${esc(id)}" data-k="mirror" ${c.mirror ? "checked" : ""}><label>Mirror</label></div>
+          <div class="checkline"><input type="checkbox" data-id="${esc(id)}" data-k="audio" ${c.audio ? "checked" : ""}><label>Audio</label></div>
+          <div class="checkline"><input type="checkbox" data-id="${esc(id)}" data-k="fix_packet_loss" ${c.fix_packet_loss ? "checked" : ""}><label>Fix packet loss</label></div>`;
+        wrap.appendChild(el);
+      }
+    }
+
+    async function loadCfg() {
+      cfg = await (await fetch("/api/config")).json();
+      document.getElementById("port").value = (cfg.http_server || {}).port ?? 5000;
+      document.getElementById("level").value = (cfg.logging || {}).level ?? "info";
+      document.getElementById("use_color").checked = !!(cfg.logging || {}).use_color;
+      document.getElementById("discovery_ips").value = lines(cfg.discovery_ips);
+      document.getElementById("blacklisted_ips").value = lines(cfg.blacklisted_ips);
+      renderCameras();
+    }
+
+    function collect() {
+      const out = JSON.parse(JSON.stringify(cfg));
+      out.http_server = out.http_server || {};
+      out.http_server.port = parseInt(document.getElementById("port").value, 10) || 5000;
+      out.logging = out.logging || {};
+      out.logging.level = document.getElementById("level").value;
+      out.logging.use_color = document.getElementById("use_color").checked;
+      out.discovery_ips = parseLines(document.getElementById("discovery_ips").value);
+      out.blacklisted_ips = parseLines(document.getElementById("blacklisted_ips").value);
+      out.cameras = out.cameras || {};
+      document.querySelectorAll("[data-id]").forEach((inp) => {
+        const id = inp.dataset.id, k = inp.dataset.k;
+        out.cameras[id] = out.cameras[id] || {};
+        if (inp.type === "checkbox") out.cameras[id][k] = inp.checked;
+        else if (k === "rotate") out.cameras[id][k] = parseInt(inp.value, 10) || 0;
+        else out.cameras[id][k] = inp.value;
+      });
+      return out;
+    }
+
+    async function save() {
+      try {
+        const r = await fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(collect()),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        const j = await r.json();
+        cfg = collect();
+        toast("Saved to " + j.saved);
+      } catch (e) {
+        toast("Save failed: " + e.message, true);
+      }
+    }
+
+    loadCfg();
+  </script>
+</body>
+</html>

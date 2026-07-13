@@ -35,6 +35,7 @@ audio_queues: Dict[str, List[asyncio.Queue]] = {}
 
 _html_template = (_ASSETS / "asd.html").read_text(encoding="utf-8")
 _index_html = (_ASSETS / "index.html").read_text(encoding="utf-8")
+_config_html = (_ASSETS / "config.html").read_text(encoding="utf-8")
 _style_css = (_ASSETS / "style.css").read_text(encoding="utf-8")
 _app_js = (_ASSETS / "app.js").read_text(encoding="utf-8")
 _favicon = (_ASSETS / "cam.ico.gz").read_bytes()
@@ -68,6 +69,31 @@ async def _handle_cameras_api(request: web.Request) -> web.Response:
             }
         )
     return web.json_response(data)
+
+
+async def _handle_settings_page(request: web.Request) -> web.Response:
+    return web.Response(text=_config_html, content_type="text/html")
+
+
+async def _handle_config_get(request: web.Request) -> web.Response:
+    return web.json_response(settings.config)
+
+
+async def _handle_config_post(request: web.Request) -> web.Response:
+    try:
+        new = await request.json()
+    except Exception:
+        return web.Response(status=400, text="invalid JSON")
+    if not isinstance(new, dict):
+        return web.Response(status=400, text="config must be an object")
+    settings.apply_config(new)
+    try:
+        path = settings.save_config()
+    except OSError as exc:
+        logger.error(f"Could not save config: {exc}")
+        return web.Response(status=500, text=f"could not write config: {exc}")
+    logger.info(f"Config saved to {path} via web UI")
+    return web.json_response({"saved": path})
 
 
 async def _handle_ui(request: web.Request) -> web.Response:
@@ -249,6 +275,9 @@ def build_app() -> web.Application:
     app.router.add_get("/style.css", _handle_style)
     app.router.add_get("/app.js", _handle_app_js)
     app.router.add_get("/api/cameras", _handle_cameras_api)
+    app.router.add_get("/settings", _handle_settings_page)
+    app.router.add_get("/api/config", _handle_config_get)
+    app.router.add_post("/api/config", _handle_config_post)
     app.router.add_get("/ui/{devId}", _handle_ui)
     app.router.add_get("/audio/{devId}", _handle_audio)
     app.router.add_get("/favicon.ico", _handle_favicon)
