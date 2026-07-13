@@ -22,6 +22,7 @@
       <button class="btn" onclick="toggle_audio()" id="audio" disabled>🔇 Audio: disabled</button>
       <button class="btn" onclick="fetch('/rotate/${id}')">⟳ Rotate</button>
       <button class="btn" onclick="fetch('/mirror/${id}')">⇋ Mirror</button>
+      <button class="btn primary" onclick="save_settings()">💾 Save settings</button>
     </div>
   </main>
 
@@ -99,6 +100,17 @@
     function update_audio_button(on) {
       if (${audio}) {
         audio_button.innerText = on ? "🔊 Audio: on" : "🔇 Audio: off";
+      }
+    }
+
+    async function save_settings() {
+      try {
+        const r = await fetch("/api/cameras/${id}/save", { method: "POST" });
+        if (!r.ok) throw new Error(await r.text());
+        const j = await r.json();
+        toast("Saved to " + j.saved);
+      } catch (e) {
+        toast("Save failed: " + e.message, true);
       }
     }
 

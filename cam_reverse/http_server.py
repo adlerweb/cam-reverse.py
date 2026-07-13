@@ -71,6 +71,21 @@ async def _handle_cameras_api(request: web.Request) -> web.Response:
     return web.json_response(data)
 
 
+async def _handle_camera_save(request: web.Request) -> web.Response:
+    dev_id = request.match_info["devId"]
+    if dev_id not in settings.config["cameras"]:
+        return web.Response(status=404, text="unknown camera")
+    # The camera's current rotate/mirror/audio already live in the config; this
+    # persists them (creating the file entry if it was only a runtime default).
+    try:
+        path = settings.save_config()
+    except OSError as exc:
+        logger.error(f"Could not save camera settings: {exc}")
+        return web.Response(status=500, text=f"could not write config: {exc}")
+    logger.info(f"Saved settings for camera {dev_id} to {path}")
+    return web.json_response({"saved": path})
+
+
 async def _handle_settings_page(request: web.Request) -> web.Response:
     return web.Response(text=_config_html, content_type="text/html")
 
@@ -287,6 +302,7 @@ def build_app() -> web.Application:
     app.router.add_get("/style.css", _handle_style)
     app.router.add_get("/app.js", _handle_app_js)
     app.router.add_get("/api/cameras", _handle_cameras_api)
+    app.router.add_post("/api/cameras/{devId}/save", _handle_camera_save)
     app.router.add_get("/settings", _handle_settings_page)
     app.router.add_get("/api/config", _handle_config_get)
     app.router.add_post("/api/config", _handle_config_post)
