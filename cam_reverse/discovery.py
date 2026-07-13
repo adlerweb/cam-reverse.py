@@ -60,9 +60,20 @@ async def _run_discovery(discovery_ips: List[str], ee: EventEmitter) -> None:
                 logger.debug(f"send to {ip} failed: {exc}")
             await asyncio.sleep(3)
 
-    for ip in discovery_ips:
+    active = set()
+
+    def _add_target(ip: str) -> None:
+        if ip in active:
+            return
+        active.add(ip)
         logger.info(f"Searching for devices on {ip}")
         tasks.append(loop.create_task(_blast(ip)))
+
+    for ip in discovery_ips:
+        _add_target(ip)
+
+    # Allow new discovery targets (manual IP / broadcast) to be added at runtime.
+    ee.on("add_target", _add_target)
 
     def _on_close() -> None:
         for t in tasks:

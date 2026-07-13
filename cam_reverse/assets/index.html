@@ -13,6 +13,7 @@
     <div class="brand">📷 cam-reverse</div>
     <div class="actions">
       <span class="pill" id="count">…</span>
+      <button class="btn primary" onclick="openAdd()">➕ Add camera</button>
       <a class="btn" href="/logs">📋 Logs</a>
       <a class="btn" href="/settings">⚙️ Settings</a>
       <button class="btn" id="theme-btn" onclick="cycleTheme()">🌗 Auto</button>
@@ -22,6 +23,26 @@
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty" hidden>No cameras discovered yet. Still searching…</div>
   </main>
+
+  <div class="modal-backdrop" id="addModal" onclick="if(event.target===this)closeAdd()">
+    <div class="modal">
+      <h2>Add camera</h2>
+      <div class="seg">
+        <button class="btn active" id="mode-auto" onclick="setMode('auto')">Automatic (broadcast)</button>
+        <button class="btn" id="mode-manual" onclick="setMode('manual')">Manual IP</button>
+      </div>
+      <div class="field">
+        <label id="ip-label">Broadcast address</label>
+        <input type="text" id="ip-input" placeholder="192.168.1.255">
+      </div>
+      <p class="hint" id="add-hint">Sends discovery probes to a broadcast address; any camera on that subnet answers.</p>
+      <div class="checkline"><input type="checkbox" id="remember"><label>Remember in config file</label></div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn primary" onclick="addCamera()">Add</button>
+        <button class="btn" onclick="closeAdd()">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
   <script>
@@ -85,6 +106,39 @@
 
     load();
     setInterval(load, 5000);
+
+    // --- add-camera dialog ---
+    function openAdd() { document.getElementById("addModal").classList.add("show"); }
+    function closeAdd() { document.getElementById("addModal").classList.remove("show"); }
+
+    function setMode(m) {
+      document.getElementById("mode-auto").classList.toggle("active", m === "auto");
+      document.getElementById("mode-manual").classList.toggle("active", m === "manual");
+      document.getElementById("ip-label").textContent = m === "auto" ? "Broadcast address" : "Camera IP address";
+      document.getElementById("ip-input").placeholder = m === "auto" ? "192.168.1.255" : "192.168.1.42";
+      document.getElementById("add-hint").textContent = m === "auto"
+        ? "Sends discovery probes to a broadcast address; any camera on that subnet answers."
+        : "Sends a discovery probe directly to one camera's IP (works across subnets / VLANs).";
+    }
+
+    async function addCamera() {
+      const ip = document.getElementById("ip-input").value.trim();
+      if (!ip) { toast("Enter an address", true); return; }
+      const remember = document.getElementById("remember").checked;
+      try {
+        const r = await fetch("/api/discover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip, remember }),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        toast("Searching " + ip + "…");
+        closeAdd();
+        setTimeout(load, 800);
+      } catch (e) {
+        toast("Failed: " + e.message, true);
+      }
+    }
   </script>
 </body>
 </html>

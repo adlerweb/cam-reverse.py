@@ -32,6 +32,7 @@ orientations = {o: create_exif_orientation(o) for o in range(1, 9)}
 sessions: Dict[str, Session] = {}
 video_queues: Dict[str, List[asyncio.Queue]] = {}
 audio_queues: Dict[str, List[asyncio.Queue]] = {}
+_discovery_ev = None  # set by serve_http; lets the UI add discovery targets
 
 _html_template = (_ASSETS / "asd.html").read_text(encoding="utf-8")
 _index_html = (_ASSETS / "index.html").read_text(encoding="utf-8")
@@ -95,6 +96,30 @@ async def _handle_camera_save(request: web.Request) -> web.Response:
         return web.Response(status=500, text=f"could not write config: {exc}")
     logger.info(f"Saved settings for camera {dev_id} to {path}")
     return web.json_response({"saved": path})
+
+
+async def _handle_discover(request: web.Request) -> web.Response:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    ip = str((body or {}).get("ip", "")).strip()
+    remember = bool((body or {}).get("remember"))
+    if not ip:
+        return web.Response(status=400, text="ip is required")
+    if _discovery_ev is None:
+        return web.Response(status=503, text="discovery not running")
+
+    _discovery_ev.emit("add_target", ip)
+    saved = None
+    if remember and ip not in settings.config["discovery_ips"]:
+        settings.config["discovery_ips"].append(ip)
+        try:
+            saved = settings.save_config()
+        except OSError as exc:
+            logger.error(f"Could not persist discovery IP: {exc}")
+    logger.info(f"Added discovery target {ip} via web UI")
+    return web.json_response({"added": ip, "saved": saved})
 
 
 async def _handle_settings_page(request: web.Request) -> web.Response:
@@ -354,6 +379,7 @@ def build_app() -> web.Application:
     app.router.add_get("/style.css", _handle_style)
     app.router.add_get("/app.js", _handle_app_js)
     app.router.add_get("/api/cameras", _handle_cameras_api)
+    app.router.add_post("/api/discover", _handle_discover)
     app.router.add_post("/api/cameras/{devId}/save", _handle_camera_save)
     app.router.add_get("/settings", _handle_settings_page)
     app.router.add_get("/logs", _handle_logs_page)
@@ -373,8 +399,10 @@ def build_app() -> web.Application:
 
 
 async def serve_http(port: int) -> None:
+    global _discovery_ev
     dev_ev = discover_devices(settings.config["discovery_ips"])
     dev_ev.on("discover", _on_discover)
+    _discovery_ev = dev_ev
 
     app = build_app()
     runner = web.AppRunner(app)

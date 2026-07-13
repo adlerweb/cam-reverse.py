@@ -206,3 +206,28 @@ body {
 .lvl-info { color: var(--ok); }
 .lvl-warning { color: #d0912e; }
 .lvl-error { color: var(--danger); }
+
+/* modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 20px;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  width: min(440px, 100%);
+  padding: 20px;
+}
+.modal h2 { margin: 0 0 14px; font-size: 17px; }
+.seg { display: flex; gap: 6px; margin-bottom: 14px; }
+.seg .btn { flex: 1; justify-content: center; }
+.seg .btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
