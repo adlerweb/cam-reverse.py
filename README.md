@@ -1,5 +1,11 @@
 Re-implementation of the "iLnk"/"iLnkP2P"/"PPPP" protocol used on some cheap (\<$5) IP cameras (sometimes branded as 'X5' or 'A9').
 
+> [!WARNING]
+> **This is an AI-vibe-coded project.** The Python code here was produced by porting the original TypeScript with an LLM. It has not been carefully audited line by line — expect bugs, rough edges, and un-idiomatic corners. Do not rely on it for anything critical, and review before trusting it on your network.
+
+> [!NOTE]
+> This is a Python port of the original TypeScript implementation by DavidVentura: <https://github.com/DavidVentura/cam-reverse>. All the protocol reverse-engineering and design is theirs; go there for the authoritative version and history.
+
 * Bought [this X5](https://www.aliexpress.com/item/1005006287788979.html) and [this A9](https://www.aliexpress.com/item/1005006117593880.html).
 * App is [YsxLite](https://play.google.com/store/apps/details?id=com.ysxlite.cam&hl=en&gl=US)
 
@@ -14,21 +20,28 @@ Per pictures of the [X5](https://github.com/DavidVentura/cam-reverse/blob/master
 - Friendly names for cameras
 - Ability to configure "blank" cameras with Wifi settings
 
-## Building
+## Installing
 
-Run `make build` or `npm run build` to build the server artifact. You can also find some pre-built files [in the CI results](https://github.com/DavidVentura/cam-reverse/actions) or [in the releases](https://github.com/DavidVentura/cam-reverse/releases/)
+This is a Python (asyncio + aiohttp) implementation. See [PYTHON.md](PYTHON.md) for details.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e .
+```
+
+This installs a `cam-reverse` command (equivalently `python -m cam_reverse`).
 
 ## Pairing a new camera
 
 Ensure your device in access point mode (the blue LED blinks slowly to indicate that); optionally, press the MODE button for 5s to switch to access point mode.
 
-Connect to the device's access point (e.g., FTYC811847AGFDZ) and run `node dist/bin.cjs pair --ssid <SSID> --password <PASSWORD>`.
+Connect to the device's access point (e.g., FTYC811847AGFDZ) and run `cam-reverse pair --ssid <SSID> --password <PASSWORD>`.
 
 
 ## Running
 
 ### HTTP Server
-To execute the HTTP server, run `node dist/bin.cjs http_server`; you can access the JPEG stream at http://localhost:5000/.
+To execute the HTTP server, run `cam-reverse http_server`; you can access the JPEG stream at http://localhost:5000/.
 
 The roundtrip delay when using MJPEG is [~350ms](pics/delay.jpg?raw=true).
 
@@ -41,7 +54,7 @@ Clicking on the image will take you to a page that has audio streaming. Click th
 
 #### Settings
 
-You can provide a config file in `yml` format, then pass it as an argument: `node bin.cjs http_server --config_file <your_config.yml>`
+You can provide a config file in `yml` format, then pass it as an argument: `cam-reverse http_server --config_file <your_config.yml>`
 
 ```yml
 http_server:
@@ -86,7 +99,7 @@ You must restart the HTTP server for changes to the settings file to take effect
 ### Single capture mode
 
 ```bash
-node bin.cjs frame --discovery_ip 192.168.40.104 --out out.jpg 
+cam-reverse frame --discovery_ip 192.168.40.104 --out out.jpg
 ```
 
 ----
@@ -243,9 +256,14 @@ Protocol reversing was done with a combination of static analysis of the shared 
 
 The headers reversed with Ghidra are at `types/all.h`. They are almost not used by this minimal implementation though.
 
-The hooks used with frida are at `frida-hooks.js`, but it's mostly a playground - some useful functions got deleted once I understood the protocol.
+The Frida hooks that were used for dynamic analysis have been removed now that the protocol is understood; the recovered behaviour lives in the implementation (`cam_reverse/`). A trace of the observed packet sequence is kept in `proto`.
 
-There's also a partial Wireshark dissector at `dissector.lua`. You can install it with `make install-wireshark-dissector`.
+There's also a partial Wireshark dissector at `dissector.lua`. Install it by symlinking it into your Wireshark plugins directory:
+
+```bash
+mkdir -p ~/.local/lib/wireshark/plugins
+ln -s "$PWD/dissector.lua" ~/.local/lib/wireshark/plugins/dissector.lua
+```
 
 ### Take APK from emulator/sacrificial device
 ```
