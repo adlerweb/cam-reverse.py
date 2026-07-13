@@ -232,7 +232,22 @@ body {
 .seg .btn { flex: 1; justify-content: center; }
 .seg .btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 
-/* footer */
-.site-footer { text-align: center; color: var(--muted); font-size: 13px; padding: 28px 20px 24px; }
+/* footer — fixed to the bottom of the viewport */
+.site-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-top: 1px solid var(--border);
+}
 .site-footer a { color: var(--accent); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
+/* room so page content is never hidden behind the fixed footer */
+body { padding-bottom: 46px; }
