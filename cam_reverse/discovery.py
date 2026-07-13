@@ -51,19 +51,23 @@ async def _run_discovery(discovery_ips: List[str], ee: EventEmitter) -> None:
     ls_buf = create_LanSearch().to_bytes()
     tasks: List[asyncio.Task] = []
 
+    def _probe(ip: str) -> None:
+        logger.log("trace", f">> LanSearch [{ip}]")
+        try:
+            transport.sendto(ls_buf, (ip, SEND_PORT))
+        except OSError as exc:
+            logger.debug(f"send to {ip} failed: {exc}")
+
     async def _blast(ip: str) -> None:
         while True:
-            logger.log("trace", f">> LanSearch [{ip}]")
-            try:
-                transport.sendto(ls_buf, (ip, SEND_PORT))
-            except OSError as exc:
-                logger.debug(f"send to {ip} failed: {exc}")
+            _probe(ip)
             await asyncio.sleep(3)
 
     active = set()
 
     def _add_target(ip: str) -> None:
         if ip in active:
+            _probe(ip)  # already tracked; nudge immediately (e.g. reconnect)
             return
         active.add(ip)
         logger.info(f"Searching for devices on {ip}")

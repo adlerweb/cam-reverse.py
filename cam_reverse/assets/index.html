@@ -67,6 +67,7 @@
           <div class="card-actions">
             <button class="btn sm" onclick="fetch('/rotate/${id}')">⟳ Rotate</button>
             <button class="btn sm" onclick="fetch('/mirror/${id}')">⇋ Mirror</button>
+            <button class="btn sm" onclick="reconnect('${c.id}')">↻ Reconnect</button>
             <a class="btn sm" href="/ui/${id}">Open</a>
           </div>
         </div>`;
@@ -106,6 +107,16 @@
 
     load();
     setInterval(load, 5000);
+
+    async function reconnect(id) {
+      try {
+        const r = await fetch(`/api/cameras/${encodeURIComponent(id)}/reconnect`, { method: "POST" });
+        if (!r.ok) throw new Error(await r.text());
+        toast("Reconnecting " + id + "…");
+      } catch (e) {
+        toast("Reconnect failed: " + e.message, true);
+      }
+    }
 
     // --- add-camera dialog ---
     function openAdd() { document.getElementById("addModal").classList.add("show"); }

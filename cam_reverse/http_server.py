@@ -32,6 +32,7 @@ orientations = {o: create_exif_orientation(o) for o in range(1, 9)}
 sessions: Dict[str, Session] = {}
 video_queues: Dict[str, List[asyncio.Queue]] = {}
 audio_queues: Dict[str, List[asyncio.Queue]] = {}
+camera_ips: Dict[str, str] = {}  # last-known IP per camera, survives disconnect
 _discovery_ev = None  # set by serve_http; lets the UI add discovery targets
 
 _html_template = (_ASSETS / "asd.html").read_text(encoding="utf-8")
@@ -81,6 +82,25 @@ async def _handle_cameras_api(request: web.Request) -> web.Response:
             }
         )
     return web.json_response(data)
+
+
+async def _handle_camera_reconnect(request: web.Request) -> web.Response:
+    dev_id = request.match_info["devId"]
+    ip = camera_ips.get(dev_id)
+    s = sessions.get(dev_id)
+    if s is None and ip is None:
+        return web.Response(status=404, text="unknown camera")
+
+    if s is not None:
+        logger.info(f"Reconnecting camera {dev_id} ({s.dst_ip})")
+        s.close()  # tears down the session; on_disconnect drops it from sessions
+    else:
+        logger.info(f"Reconnecting camera {dev_id} ({ip})")
+
+    # Re-probe the camera's IP so discovery re-establishes the session promptly.
+    if ip and _discovery_ev is not None:
+        _discovery_ev.emit("add_target", ip)
+    return web.json_response({"reconnecting": dev_id, "ip": ip})
 
 
 async def _handle_camera_save(request: web.Request) -> web.Response:
@@ -310,6 +330,7 @@ def _on_discover(rinfo, dev: DevSerial) -> None:
         return
 
     cam_ip = rinfo[0]
+    camera_ips[dev.dev_id] = cam_ip
     logger.info(f"Discovered camera {dev.dev_id} at {cam_ip}")
     video_queues[dev.dev_id] = []
     audio_queues[dev.dev_id] = []
@@ -380,6 +401,7 @@ def build_app() -> web.Application:
     app.router.add_get("/app.js", _handle_app_js)
     app.router.add_get("/api/cameras", _handle_cameras_api)
     app.router.add_post("/api/discover", _handle_discover)
+    app.router.add_post("/api/cameras/{devId}/reconnect", _handle_camera_reconnect)
     app.router.add_post("/api/cameras/{devId}/save", _handle_camera_save)
     app.router.add_get("/settings", _handle_settings_page)
     app.router.add_get("/logs", _handle_logs_page)
