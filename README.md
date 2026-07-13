@@ -45,11 +45,12 @@ To execute the HTTP server, run `cam-reverse.py http_server`; you can access the
 
 The roundtrip delay when using MJPEG is [~350ms](pics/delay.jpg?raw=true).
 
-There's a basic UI which can display multiple cameras:
+There's a web UI which displays all discovered cameras, with light and dark modes:
 
-![](pics/web-ui.jpg?raw=true)
+![cam-reverse web UI, light mode](pics/webui-light.png?raw=true)
+![cam-reverse web UI, dark mode](pics/webui-dark.png?raw=true)
 
-Clicking on the image will take you to a page that has audio streaming. Click the button below the image to mute/unmute the audio.
+Clicking a camera opens a page with audio streaming, per-camera settings, and stream/snapshot URLs for NVR integration.
 
 
 #### Settings
