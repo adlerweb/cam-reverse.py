@@ -274,7 +274,7 @@ async def _handle_camera(request: web.Request) -> web.StreamResponse:
     dev_id = request.match_info["devId"]
     s = sessions.get(dev_id)
     if s is None:
-        logger.info(f"Video stream requested for unknown camera {dev_id}")
+        logger.info(f"Video stream requested for unknown camera {dev_id} from client {request.remote}")
         return web.Response(status=400, text=f"Camera {dev_id} not discovered")
     if not s.connected:
         return web.Response(status=400, text=f"Camera {dev_id} offline")
