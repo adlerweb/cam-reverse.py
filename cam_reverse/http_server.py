@@ -96,6 +96,18 @@ async def _handle_config_post(request: web.Request) -> web.Response:
     return web.json_response({"saved": path})
 
 
+async def _handle_config_reload(request: web.Request) -> web.Response:
+    try:
+        path = settings.reload_config()
+    except (OSError, ValueError) as exc:
+        logger.error(f"Could not reload config: {exc}")
+        return web.Response(status=500, text=f"could not reload config: {exc}")
+    if path is None:
+        return web.Response(status=400, text="no config file to reload")
+    logger.info(f"Config reloaded from {path} via web UI")
+    return web.json_response({"reloaded": path})
+
+
 async def _handle_ui(request: web.Request) -> web.Response:
     dev_id = request.match_info["devId"]
     s = sessions.get(dev_id)
@@ -278,6 +290,7 @@ def build_app() -> web.Application:
     app.router.add_get("/settings", _handle_settings_page)
     app.router.add_get("/api/config", _handle_config_get)
     app.router.add_post("/api/config", _handle_config_post)
+    app.router.add_post("/api/config/reload", _handle_config_reload)
     app.router.add_get("/ui/{devId}", _handle_ui)
     app.router.add_get("/audio/{devId}", _handle_audio)
     app.router.add_get("/favicon.ico", _handle_favicon)

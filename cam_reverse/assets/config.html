@@ -45,6 +45,7 @@
 
     <div class="toolbar">
       <button class="btn primary" onclick="save()">💾 Save to file</button>
+      <button class="btn" onclick="reloadCfg()">↻ Reload from file</button>
       <a class="btn" href="/">Cancel</a>
     </div>
   </main>
@@ -135,6 +136,18 @@
         toast("Saved to " + j.saved);
       } catch (e) {
         toast("Save failed: " + e.message, true);
+      }
+    }
+
+    async function reloadCfg() {
+      try {
+        const r = await fetch("/api/config/reload", { method: "POST" });
+        if (!r.ok) throw new Error(await r.text());
+        const j = await r.json();
+        await loadCfg();
+        toast("Reloaded from " + j.reloaded);
+      } catch (e) {
+        toast("Reload failed: " + e.message, true);
       }
     }
 
