@@ -184,3 +184,25 @@ body {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.err { background: var(--danger); color: #fff; }
+
+/* log viewer */
+.logbox {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  height: 70vh;
+  overflow: auto;
+}
+.logline { white-space: pre-wrap; word-break: break-word; }
+.logtime { color: var(--muted); margin-right: 8px; }
+.logline .lvl { display: inline-block; min-width: 62px; font-weight: 600; }
+.lvl-trace { color: var(--muted); }
+.lvl-debug { color: #8a7fff; }
+.lvl-info { color: var(--ok); }
+.lvl-warning { color: #d0912e; }
+.lvl-error { color: var(--danger); }

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/style.css">
+  <title>Logs — cam-reverse</title>
+  <script>(function(){var t=localStorage.getItem('cam-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><a href="/">📷 cam-reverse</a> <span style="color:var(--muted)">/ Logs</span></div>
+    <div class="actions">
+      <label style="color:var(--muted);font-size:13px">Level
+        <select id="level">
+          <option value="trace">trace</option>
+          <option value="debug">debug</option>
+          <option value="info" selected>info</option>
+          <option value="warning">warning</option>
+          <option value="error">error</option>
+        </select>
+      </label>
+      <button class="btn" id="pause" onclick="togglePause()">⏸ Pause</button>
+      <button class="btn" onclick="clearView()">🗑 Clear</button>
+      <a class="btn" href="/">← All cameras</a>
+      <button class="btn" id="theme-btn" onclick="cycleTheme()">🌗 Auto</button>
+    </div>
+  </header>
+  <main class="container">
+    <div class="logbox" id="logbox"></div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    const box = document.getElementById("logbox");
+    const levelSel = document.getElementById("level");
+    let after = 0;
+    let paused = false;
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+
+    function append(entries) {
+      const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 20;
+      for (const e of entries) {
+        const lvl = String(e.level).toLowerCase();
+        const line = document.createElement("div");
+        line.className = "logline";
+        line.innerHTML =
+          `<span class="logtime">${e.time}</span>` +
+          `<span class="lvl lvl-${lvl}">${lvl}</span> ${esc(e.message)}`;
+        box.appendChild(line);
+        after = Math.max(after, e.seq);
+      }
+      while (box.childElementCount > 3000) box.removeChild(box.firstChild);
+      if (atBottom) box.scrollTop = box.scrollHeight;
+    }
+
+    async function poll() {
+      if (paused) return;
+      try {
+        const r = await fetch(`/api/logs?level=${levelSel.value}&after=${after}`);
+        const entries = await r.json();
+        if (entries.length) append(entries);
+      } catch (e) { /* ignore transient errors */ }
+    }
+
+    function clearView() {
+      box.innerHTML = "";
+    }
+
+    function reset() {
+      after = 0;
+      clearView();
+      poll();
+    }
+
+    function togglePause() {
+      paused = !paused;
+      document.getElementById("pause").textContent = paused ? "▶️ Resume" : "⏸ Pause";
+    }
+
+    levelSel.addEventListener("change", reset);
+    reset();
+    setInterval(poll, 1000);
+  </script>
+</body>
+</html>

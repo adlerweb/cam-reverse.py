@@ -18,7 +18,7 @@ from . import settings
 from .discovery import discover_devices
 from .exif import add_exif_to_jpeg, create_exif_orientation
 from .impl import DevSerial
-from .logger import logger
+from .logger import LOG_BUFFER, level_no, logger
 from .session import Handlers, Session, make_session, start_video_stream
 
 BOUNDARY = "a very good boundary line"
@@ -36,6 +36,7 @@ audio_queues: Dict[str, List[asyncio.Queue]] = {}
 _html_template = (_ASSETS / "asd.html").read_text(encoding="utf-8")
 _index_html = (_ASSETS / "index.html").read_text(encoding="utf-8")
 _config_html = (_ASSETS / "config.html").read_text(encoding="utf-8")
+_logs_html = (_ASSETS / "logs.html").read_text(encoding="utf-8")
 _style_css = (_ASSETS / "style.css").read_text(encoding="utf-8")
 _app_js = (_ASSETS / "app.js").read_text(encoding="utf-8")
 _favicon = (_ASSETS / "cam.ico.gz").read_bytes()
@@ -98,6 +99,21 @@ async def _handle_camera_save(request: web.Request) -> web.Response:
 
 async def _handle_settings_page(request: web.Request) -> web.Response:
     return web.Response(text=_config_html, content_type="text/html")
+
+
+async def _handle_logs_page(request: web.Request) -> web.Response:
+    return web.Response(text=_logs_html, content_type="text/html")
+
+
+async def _handle_logs_api(request: web.Request) -> web.Response:
+    level = request.query.get("level", "trace")
+    try:
+        after = int(request.query.get("after", "0"))
+    except ValueError:
+        after = 0
+    minno = level_no(level)
+    out = [e for e in list(LOG_BUFFER) if e["levelno"] >= minno and e["seq"] > after]
+    return web.json_response(out)
 
 
 async def _handle_config_get(request: web.Request) -> web.Response:
@@ -340,6 +356,8 @@ def build_app() -> web.Application:
     app.router.add_get("/api/cameras", _handle_cameras_api)
     app.router.add_post("/api/cameras/{devId}/save", _handle_camera_save)
     app.router.add_get("/settings", _handle_settings_page)
+    app.router.add_get("/logs", _handle_logs_page)
+    app.router.add_get("/api/logs", _handle_logs_api)
     app.router.add_get("/api/config", _handle_config_get)
     app.router.add_post("/api/config", _handle_config_post)
     app.router.add_post("/api/config/reload", _handle_config_reload)

@@ -6,11 +6,35 @@ Port of ``logger.ts`` (winston + custom trace level). Exposes a module-level
 """
 from __future__ import annotations
 
+import itertools
 import logging
 import sys
+import time
+from collections import deque
+from typing import Deque, Dict
 
 TRACE = 5
 logging.addLevelName(TRACE, "trace")
+
+# In-memory ring buffer of recent records, exposed by the web UI log viewer.
+LOG_BUFFER: Deque[Dict] = deque(maxlen=2000)
+_seq = itertools.count(1)
+
+
+class _BufferHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            LOG_BUFFER.append(
+                {
+                    "seq": next(_seq),
+                    "time": time.strftime("%H:%M:%S", time.localtime(record.created)),
+                    "level": record.levelname,
+                    "levelno": record.levelno,
+                    "message": record.getMessage(),
+                }
+            )
+        except Exception:
+            pass
 
 _LEVELS = {
     "trace": TRACE,
@@ -53,11 +77,17 @@ class _Logger:
 
     def configure(self, level: str, colorize) -> None:
         use_color = sys.stdout.isatty() if colorize is None else bool(colorize)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(_ColorFormatter(use_color))
+        console = logging.StreamHandler(sys.stdout)
+        console.setFormatter(_ColorFormatter(use_color))
+        console.setLevel(_LEVELS.get(level, logging.INFO))
+        buffer = _BufferHandler()
+        buffer.setLevel(TRACE)
         self._log.handlers.clear()
-        self._log.addHandler(handler)
-        self._log.setLevel(_LEVELS.get(level, logging.INFO))
+        self._log.addHandler(console)
+        self._log.addHandler(buffer)
+        # Capture everything; each handler filters by its own level, so the log
+        # viewer can show more detail than the console prints.
+        self._log.setLevel(TRACE)
 
     def log(self, level_name: str, msg: str) -> None:
         self._log.log(_LEVELS.get(level_name, logging.INFO), msg)
@@ -79,6 +109,11 @@ class _Logger:
 
 
 logger = _Logger()
+
+
+def level_no(name: str) -> int:
+    """Numeric value for a level name (used to filter the log buffer)."""
+    return _LEVELS.get(name, TRACE)
 
 
 def build_logger(level: str, colorize=None) -> None:
