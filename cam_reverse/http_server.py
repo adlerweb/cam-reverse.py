@@ -34,11 +34,40 @@ video_queues: Dict[str, List[asyncio.Queue]] = {}
 audio_queues: Dict[str, List[asyncio.Queue]] = {}
 
 _html_template = (_ASSETS / "asd.html").read_text(encoding="utf-8")
+_index_html = (_ASSETS / "index.html").read_text(encoding="utf-8")
+_style_css = (_ASSETS / "style.css").read_text(encoding="utf-8")
+_app_js = (_ASSETS / "app.js").read_text(encoding="utf-8")
 _favicon = (_ASSETS / "cam.ico.gz").read_bytes()
 
 
 def camera_name(dev_id: str) -> str:
-    return settings.config["cameras"][dev_id].get("alias") or dev_id
+    return settings.config["cameras"].get(dev_id, {}).get("alias") or dev_id
+
+
+async def _handle_style(request: web.Request) -> web.Response:
+    return web.Response(body=_style_css, content_type="text/css")
+
+
+async def _handle_app_js(request: web.Request) -> web.Response:
+    return web.Response(body=_app_js, content_type="application/javascript")
+
+
+async def _handle_cameras_api(request: web.Request) -> web.Response:
+    data = []
+    for dev_id, s in sessions.items():
+        cam = settings.config["cameras"].get(dev_id, {})
+        data.append(
+            {
+                "id": dev_id,
+                "name": camera_name(dev_id),
+                "ip": s.dst_ip,
+                "connected": s.connected,
+                "rotate": cam.get("rotate", 0),
+                "mirror": bool(cam.get("mirror")),
+                "audio": bool(cam.get("audio")),
+            }
+        )
+    return web.json_response(data)
 
 
 async def _handle_ui(request: web.Request) -> web.Response:
@@ -136,18 +165,8 @@ async def _handle_camera(request: web.Request) -> web.StreamResponse:
 
 
 async def _handle_index(request: web.Request) -> web.Response:
-    parts = [
-        "<html><head>",
-        '<link rel="shortcut icon" href="/favicon.ico">',
-        "<title>All cameras</title></head><body><h1>All cameras</h1><hr/>",
-    ]
-    for dev_id in sessions:
-        parts.append(
-            f'<h2>{camera_name(dev_id)}</h2>'
-            f'<a href="/ui/{dev_id}"><img src="/camera/{dev_id}"/></a><hr/>'
-        )
-    parts.append("</body></html>")
-    return web.Response(text="".join(parts), content_type="text/html")
+    # The gallery is data-driven: the page fetches /api/cameras and renders cards.
+    return web.Response(text=_index_html, content_type="text/html")
 
 
 def _on_discover(rinfo, dev: DevSerial) -> None:
@@ -227,6 +246,9 @@ async def _log_requests(request: web.Request, handler):
 
 def build_app() -> web.Application:
     app = web.Application(middlewares=[_log_requests])
+    app.router.add_get("/style.css", _handle_style)
+    app.router.add_get("/app.js", _handle_app_js)
+    app.router.add_get("/api/cameras", _handle_cameras_api)
     app.router.add_get("/ui/{devId}", _handle_ui)
     app.router.add_get("/audio/{devId}", _handle_audio)
     app.router.add_get("/favicon.ico", _handle_favicon)

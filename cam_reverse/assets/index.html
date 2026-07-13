@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/style.css">
+  <title>cam-reverse</title>
+  <script>(function(){var t=localStorage.getItem('cam-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">📷 cam-reverse</div>
+    <div class="actions">
+      <span class="pill" id="count">…</span>
+      <a class="btn" href="/settings">⚙️ Settings</a>
+      <button class="btn" id="theme-btn" onclick="cycleTheme()">🌗 Auto</button>
+    </div>
+  </header>
+  <main class="container">
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>No cameras discovered yet. Still searching…</div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    const grid = document.getElementById("grid");
+    const rendered = new Map();
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+
+    function makeCard(c) {
+      const id = encodeURIComponent(c.id);
+      const el = document.createElement("article");
+      el.className = "card";
+      el.innerHTML = `
+        <a class="thumb" href="/ui/${id}"><img src="/camera/${id}" alt="${esc(c.name)}"></a>
+        <div class="card-body">
+          <div class="card-title">${esc(c.name)}</div>
+          <div class="card-sub"><span class="dot ${c.connected ? "online" : "offline"}"></span>${esc(c.ip)} · ${esc(c.id)}</div>
+          <div class="card-actions">
+            <button class="btn sm" onclick="fetch('/rotate/${id}')">⟳ Rotate</button>
+            <button class="btn sm" onclick="fetch('/mirror/${id}')">⇋ Mirror</button>
+            <a class="btn sm" href="/ui/${id}">Open</a>
+          </div>
+        </div>`;
+      return el;
+    }
+
+    async function load() {
+      let cams;
+      try {
+        cams = await (await fetch("/api/cameras")).json();
+      } catch (e) {
+        return;
+      }
+      document.getElementById("count").textContent =
+        cams.length + (cams.length === 1 ? " camera" : " cameras");
+      document.getElementById("empty").hidden = cams.length !== 0;
+
+      const seen = new Set();
+      for (const c of cams) {
+        seen.add(c.id);
+        if (!rendered.has(c.id)) {
+          const el = makeCard(c);
+          rendered.set(c.id, el);
+          grid.appendChild(el);
+        } else {
+          rendered.get(c.id).querySelector(".dot").className =
+            "dot " + (c.connected ? "online" : "offline");
+        }
+      }
+      for (const [id, el] of rendered) {
+        if (!seen.has(id)) {
+          el.remove();
+          rendered.delete(id);
+        }
+      }
+    }
+
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>
