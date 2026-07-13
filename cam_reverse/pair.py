@@ -30,12 +30,13 @@ async def pair(ssid: str, password: str) -> None:
         if dev.dev_id in pairing:
             logger.info(f"Camera {dev.dev_id} at {rinfo[0]} already discovered, ignoring")
             return
-        logger.info(f"Discovered camera {dev.dev_id} at {rinfo[0]}")
+        cam_ip = rinfo[0]
+        logger.info(f"Discovered camera {dev.dev_id} at {cam_ip}")
         s = make_session(Handlers, dev, rinfo, on_login, 10000)
         configured: Dict[str, bool] = {}
 
         def on_disconnect() -> None:
-            logger.info(f"Camera {dev.dev_id} disconnected")
+            logger.info(f"Camera {dev.dev_id} ({cam_ip}) disconnected")
             if configured.get(dev.dev_id):
                 logger.info("Press CONTROL+C if you're done setting up your cameras")
             pairing.pop(dev.dev_id, None)

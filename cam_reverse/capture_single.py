@@ -19,7 +19,7 @@ async def capture_single(discovery_ip: str, out_file: str) -> None:
 
     def start_session(s: Session) -> None:
         start_video_stream(s)
-        logger.info(f"Camera {s.dev_name} is now ready to stream")
+        logger.info(f"Camera {s.dev_name} ({s.dst_ip}) is now ready to stream")
 
     def on_discover(rinfo, dev: DevSerial) -> None:
         if dev.dev_id in sessions:

@@ -150,7 +150,7 @@ class Session:
             if delta > 600:
                 self.send(create_P2pAlive())
             if delta > self.timeout_ms:
-                logger.warning(f"Camera {self.dev_name} timed out")
+                logger.warning(f"Camera {self.dev_name} ({self.dst_ip}) timed out")
                 self.event_emitter.emit("disconnect")
                 return
 
@@ -182,7 +182,7 @@ class Session:
             self.transport.close()
 
     def _on_login(self) -> None:
-        logger.info(f"Logging in to camera {self.dev_name}")
+        logger.info(f"Logging in to camera {self.dev_name} ({self.dst_ip})")
         self.on_login(self)
 
 

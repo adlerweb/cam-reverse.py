@@ -67,7 +67,7 @@ async def _handle_audio(request: web.Request) -> web.StreamResponse:
     resp = web.StreamResponse()
     resp.headers["Content-Type"] = "text/event-stream"
     await resp.prepare(request)
-    logger.info(f"Audio stream requested for camera {dev_id}")
+    logger.info(f"Audio stream requested for camera {dev_id} ({s.dst_ip})")
 
     q: asyncio.Queue = asyncio.Queue(maxsize=200)
     audio_queues[dev_id].append(q)
@@ -108,12 +108,14 @@ async def _handle_mirror(request: web.Request) -> web.Response:
 
 async def _handle_camera(request: web.Request) -> web.StreamResponse:
     dev_id = request.match_info["devId"]
-    logger.info(f"Video stream requested for camera {dev_id}")
     s = sessions.get(dev_id)
     if s is None:
+        logger.info(f"Video stream requested for unknown camera {dev_id}")
         return web.Response(status=400, text=f"Camera {dev_id} not discovered")
     if not s.connected:
         return web.Response(status=400, text=f"Camera {dev_id} offline")
+    cam_ip = s.dst_ip
+    logger.info(f"Video stream requested for camera {dev_id} ({cam_ip})")
 
     resp = web.StreamResponse()
     resp.headers["Content-Type"] = f'multipart/x-mixed-replace; boundary="{BOUNDARY}"'
@@ -129,7 +131,7 @@ async def _handle_camera(request: web.Request) -> web.StreamResponse:
         pass
     finally:
         video_queues[dev_id].remove(q)
-        logger.info(f"Video stream closed for camera {dev_id}")
+        logger.info(f"Video stream closed for camera {dev_id} ({cam_ip})")
     return resp
 
 
@@ -153,13 +155,14 @@ def _on_discover(rinfo, dev: DevSerial) -> None:
         logger.info(f"Camera {dev.dev_id} at {rinfo[0]} already discovered, ignoring")
         return
 
-    logger.info(f"Discovered camera {dev.dev_id} at {rinfo[0]}")
+    cam_ip = rinfo[0]
+    logger.info(f"Discovered camera {dev.dev_id} at {cam_ip}")
     video_queues[dev.dev_id] = []
     audio_queues[dev.dev_id] = []
 
     def start_session(s: Session) -> None:
         start_video_stream(s)
-        logger.info(f"Camera {s.dev_name} is now ready to stream")
+        logger.info(f"Camera {s.dev_name} ({cam_ip}) is now ready to stream")
 
     s = make_session(Handlers, dev, rinfo, start_session, 5000)
     sessions[dev.dev_id] = s
@@ -192,7 +195,7 @@ def _on_discover(rinfo, dev: DevSerial) -> None:
     s.event_emitter.on("frame", on_frame)
 
     def on_disconnect() -> None:
-        logger.info(f"Camera {dev.dev_id} disconnected")
+        logger.info(f"Camera {dev.dev_id} ({cam_ip}) disconnected")
         sessions.pop(dev.dev_id, None)
 
     s.event_emitter.on("disconnect", on_disconnect)
