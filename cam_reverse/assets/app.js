@@ -39,5 +39,17 @@
     }, 2600);
   };
 
-  document.addEventListener("DOMContentLoaded", updateThemeButton);
+  function addFooter() {
+    if (document.querySelector(".site-footer")) return;
+    const f = document.createElement("footer");
+    f.className = "site-footer";
+    f.innerHTML =
+      'cam-reverse · <a href="https://github.com/adlerweb/cam-reverse" target="_blank" rel="noopener noreferrer">github.com/adlerweb/cam-reverse</a>';
+    document.body.appendChild(f);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    updateThemeButton();
+    addFooter();
+  });
 })();

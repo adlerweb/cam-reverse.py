@@ -231,3 +231,8 @@ body {
 .seg { display: flex; gap: 6px; margin-bottom: 14px; }
 .seg .btn { flex: 1; justify-content: center; }
 .seg .btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
+/* footer */
+.site-footer { text-align: center; color: var(--muted); font-size: 13px; padding: 28px 20px 24px; }
+.site-footer a { color: var(--accent); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
