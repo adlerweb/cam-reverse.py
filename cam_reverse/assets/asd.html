@@ -24,6 +24,25 @@
       <button class="btn" onclick="fetch('/mirror/${id}')">⇋ Mirror</button>
       <button class="btn primary" onclick="save_settings()">💾 Save settings</button>
     </div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>Integration URLs</h2>
+      <p class="hint">Add these to an NVR such as Frigate, Blue Iris or ZoneMinder.</p>
+      <div class="field">
+        <label>MJPEG stream</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="url-stream" readonly style="flex:1">
+          <button class="btn" onclick="copy_url('url-stream')">Copy</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Snapshot (single JPEG)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="url-snapshot" readonly style="flex:1">
+          <button class="btn" onclick="copy_url('url-snapshot')">Copy</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script src="/app.js"></script>
@@ -100,6 +119,21 @@
     function update_audio_button(on) {
       if (${audio}) {
         audio_button.innerText = on ? "🔊 Audio: on" : "🔇 Audio: off";
+      }
+    }
+
+    const origin = window.location.origin;
+    document.getElementById("url-stream").value = origin + "/camera/${id}";
+    document.getElementById("url-snapshot").value = origin + "/snapshot/${id}";
+
+    function copy_url(elId) {
+      const el = document.getElementById(elId);
+      el.select();
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(el.value).then(() => toast("Copied")).catch(() => toast("Copy failed", true));
+      } else {
+        document.execCommand("copy");
+        toast("Copied");
       }
     }
 

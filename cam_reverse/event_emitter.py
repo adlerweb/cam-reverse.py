@@ -17,6 +17,13 @@ class EventEmitter:
         self._listeners[event].append(cb)
         return self
 
+    def off(self, event: str, cb: Callable) -> "EventEmitter":
+        try:
+            self._listeners[event].remove(cb)
+        except ValueError:
+            pass
+        return self
+
     def emit(self, event: str, *args) -> bool:
         listeners = list(self._listeners.get(event, ()))
         for cb in listeners:

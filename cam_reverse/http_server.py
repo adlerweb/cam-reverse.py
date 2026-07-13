@@ -45,6 +45,16 @@ def camera_name(dev_id: str) -> str:
     return settings.config["cameras"].get(dev_id, {}).get("alias") or dev_id
 
 
+def _assemble_frame(dev_id: str, s: Session) -> bytes:
+    """The current completed frame as a single oriented JPEG."""
+    cam = settings.config["cameras"].get(dev_id, {})
+    orientation = cam.get("rotate", 0)
+    orientation = oMapMirror[orientation] if cam.get("mirror") else oMap[orientation]
+    exif_segment = orientations[orientation]
+    jpeg_header = add_exif_to_jpeg(s.cur_image[0], exif_segment)
+    return jpeg_header + b"".join(s.cur_image[1:])
+
+
 async def _handle_style(request: web.Request) -> web.Response:
     return web.Response(body=_style_css, content_type="text/css")
 
@@ -121,6 +131,37 @@ async def _handle_config_reload(request: web.Request) -> web.Response:
         return web.Response(status=400, text="no config file to reload")
     logger.info(f"Config reloaded from {path} via web UI")
     return web.json_response({"reloaded": path})
+
+
+async def _handle_snapshot(request: web.Request) -> web.StreamResponse:
+    dev_id = request.match_info["devId"]
+    s = sessions.get(dev_id)
+    if s is None:
+        return web.Response(status=400, text=f"Camera {dev_id} not discovered")
+    if not s.connected:
+        return web.Response(status=400, text=f"Camera {dev_id} offline")
+
+    # Grab the next completed frame off the session's event stream.
+    fut: asyncio.Future = asyncio.get_event_loop().create_future()
+
+    def on_frame_once() -> None:
+        if fut.done():
+            return
+        try:
+            fut.set_result(_assemble_frame(dev_id, s))
+        except Exception as exc:  # malformed frame; report rather than hang
+            fut.set_exception(exc)
+
+    s.event_emitter.on("frame", on_frame_once)
+    try:
+        data = await asyncio.wait_for(fut, timeout=10)
+    except asyncio.TimeoutError:
+        return web.Response(status=504, text="no frame within timeout")
+    except Exception as exc:
+        return web.Response(status=500, text=f"frame error: {exc}")
+    finally:
+        s.event_emitter.off("frame", on_frame_once)
+    return web.Response(body=data, content_type="image/jpeg")
 
 
 async def _handle_ui(request: web.Request) -> web.Response:
@@ -246,12 +287,7 @@ def _on_discover(rinfo, dev: DevSerial) -> None:
     }
 
     def on_frame() -> None:
-        cam = settings.config["cameras"][dev.dev_id]
-        orientation = cam["rotate"]
-        orientation = oMapMirror[orientation] if cam.get("mirror") else oMap[orientation]
-        exif_segment = orientations[orientation]
-        jpeg_header = add_exif_to_jpeg(s.cur_image[0], exif_segment)
-        assembled = jpeg_header + b"".join(s.cur_image[1:])
+        assembled = _assemble_frame(dev.dev_id, s)
         header = (
             f"\r\n--{BOUNDARY}\r\n"
             f"Content-Length: {len(assembled)}\r\n"
@@ -313,6 +349,7 @@ def build_app() -> web.Application:
     app.router.add_get("/rotate/{devId}", _handle_rotate)
     app.router.add_get("/mirror/{devId}", _handle_mirror)
     app.router.add_get("/camera/{devId}", _handle_camera)
+    app.router.add_get("/snapshot/{devId}", _handle_snapshot)
     app.router.add_get("/", _handle_index)
     return app
 
