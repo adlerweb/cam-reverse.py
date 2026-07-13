@@ -12,9 +12,10 @@ python3 -m venv .venv
 ## Run
 
 ```bash
-cam-reverse http_server --config_file config.yml   # MJPEG UI on :5000
-cam-reverse pair --ssid <SSID> --password <PW>      # while on the camera's AP
-cam-reverse frame --discovery_ip <IP> --out out.jpg
+cam-reverse.py http_server --config_file config.yml   # MJPEG UI on :5000
+cam-reverse.py pair --ssid <SSID> --password <PW>      # while on the camera's AP
+cam-reverse.py frame --discovery_ip <IP> --out out.jpg
+# from a checkout without installing: python cam-reverse.py <subcommand> ...
 # equivalently: python -m cam_reverse <subcommand> ...
 ```
 
@@ -45,7 +46,7 @@ discovery against the asyncio mock camera in `cam_reverse/mock_server.py`.
 | `http_server.py` | aiohttp; per-client `asyncio.Queue` bridges the sync `frame`/`audio` events to async writes |
 | `event_emitter.py` | tiny synchronous `on`/`emit` |
 | `pair.py` / `capture_single.py` | the `pair` and `frame` subcommands |
-| `cli.py` | argparse entry point (`cam-reverse`) |
+| `cli.py` | argparse entry point (`cam-reverse.py`) |
 
 ### Things to know
 

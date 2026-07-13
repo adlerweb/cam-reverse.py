@@ -17,12 +17,13 @@ python3 -m venv .venv
 .venv/bin/pytest tests_py -q            # full test suite
 .venv/bin/pytest tests_py/test_fn.py::test_parses_wifiscan_chan0   # single test
 
-cam-reverse http_server --config_file config.yml   # MJPEG UI on :5000
-cam-reverse pair --ssid <SSID> --password <PW>      # while on the camera's AP
-cam-reverse frame --discovery_ip <IP> --out out.jpg
+cam-reverse.py http_server --config_file config.yml   # MJPEG UI on :5000
+cam-reverse.py pair --ssid <SSID> --password <PW>      # while on the camera's AP
+cam-reverse.py frame --discovery_ip <IP> --out out.jpg
 ```
 
-`cam-reverse` and `python -m cam_reverse` are equivalent entry points.
+`cam-reverse.py` (installed command), `python cam-reverse.py` (root launcher, no
+install needed) and `python -m cam_reverse` are equivalent entry points.
 
 ## Architecture
 

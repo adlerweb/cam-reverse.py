@@ -29,19 +29,19 @@ python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-This installs a `cam-reverse` command (equivalently `python -m cam_reverse`).
+This installs a `cam-reverse.py` command. You can also run it straight from a checkout without installing: `python cam-reverse.py <subcommand>` (equivalently `python -m cam_reverse`).
 
 ## Pairing a new camera
 
 Ensure your device in access point mode (the blue LED blinks slowly to indicate that); optionally, press the MODE button for 5s to switch to access point mode.
 
-Connect to the device's access point (e.g., FTYC811847AGFDZ) and run `cam-reverse pair --ssid <SSID> --password <PASSWORD>`.
+Connect to the device's access point (e.g., FTYC811847AGFDZ) and run `cam-reverse.py pair --ssid <SSID> --password <PASSWORD>`.
 
 
 ## Running
 
 ### HTTP Server
-To execute the HTTP server, run `cam-reverse http_server`; you can access the JPEG stream at http://localhost:5000/.
+To execute the HTTP server, run `cam-reverse.py http_server`; you can access the JPEG stream at http://localhost:5000/.
 
 The roundtrip delay when using MJPEG is [~350ms](pics/delay.jpg?raw=true).
 
@@ -54,7 +54,7 @@ Clicking on the image will take you to a page that has audio streaming. Click th
 
 #### Settings
 
-You can provide a config file in `yml` format, then pass it as an argument: `cam-reverse http_server --config_file <your_config.yml>`
+You can provide a config file in `yml` format, then pass it as an argument: `cam-reverse.py http_server --config_file <your_config.yml>`
 
 ```yml
 http_server:
@@ -99,7 +99,7 @@ You must restart the HTTP server for changes to the settings file to take effect
 ### Single capture mode
 
 ```bash
-cam-reverse frame --discovery_ip 192.168.40.104 --out out.jpg
+cam-reverse.py frame --discovery_ip 192.168.40.104 --out out.jpg
 ```
 
 ### Running as a service

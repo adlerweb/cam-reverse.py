@@ -17,8 +17,8 @@ Type=simple
 User=cam-reverse
 Group=cam-reverse
 WorkingDirectory=/opt/cam-reverse
-# Path to the cam-reverse entry point inside your virtualenv
-ExecStart=/opt/cam-reverse/.venv/bin/cam-reverse http_server --config_file /etc/cam-reverse/config.yml
+# Path to the cam-reverse.py entry point inside your virtualenv
+ExecStart=/opt/cam-reverse/.venv/bin/cam-reverse.py http_server --config_file /etc/cam-reverse/config.yml
 Restart=on-failure
 RestartSec=5
 

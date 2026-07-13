@@ -14,7 +14,7 @@ from .pair import pair
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cam-reverse")
+    parser = argparse.ArgumentParser(prog="cam-reverse.py")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_http = sub.add_parser("http_server", help="start http server")
