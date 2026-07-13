@@ -213,8 +213,20 @@ def _on_discover(rinfo, dev: DevSerial) -> None:
         s.event_emitter.on("audio", on_audio)
 
 
+@web.middleware
+async def _log_requests(request: web.Request, handler):
+    logger.debug(f"HTTP {request.method} {request.path_qs} from {request.remote}")
+    try:
+        resp = await handler(request)
+    except web.HTTPException as exc:
+        logger.debug(f"HTTP {request.method} {request.path_qs} -> {exc.status}")
+        raise
+    logger.debug(f"HTTP {request.method} {request.path_qs} -> {resp.status}")
+    return resp
+
+
 def build_app() -> web.Application:
-    app = web.Application()
+    app = web.Application(middlewares=[_log_requests])
     app.router.add_get("/ui/{devId}", _handle_ui)
     app.router.add_get("/audio/{devId}", _handle_audio)
     app.router.add_get("/favicon.ico", _handle_favicon)
